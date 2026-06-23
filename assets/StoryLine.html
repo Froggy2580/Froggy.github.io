@@ -1,0 +1,470 @@
+﻿<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>StoryLine - 整合交互增强版</title><style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#1A2C60;color:#F5F0E6;}
+body{font-family:"Source Han Serif CN","Source Han Serif SC","思源宋体","Noto Serif CJK SC",serif;}
+#appFrame{display:block;width:100%;height:100dvh;border:0;background:#1A2C60;transition:opacity .28s ease,filter .28s ease;}
+#appFrame.is-loading{opacity:.20;filter:blur(2px) saturate(.75);}
+.route-loader{position:fixed;inset:0;display:grid;place-items:center;background:radial-gradient(circle at var(--mx,50%) var(--my,50%),rgba(198,164,63,.16),transparent 30%),rgba(26,44,96,.72);z-index:40;opacity:0;pointer-events:none;transition:opacity .22s ease;}
+.route-loader.show{opacity:1;}
+.loader-card{position:relative;padding:14px 28px;border:1px solid rgba(198,164,63,.52);border-radius:999px;background:rgba(26,44,96,.88);color:#C6A43F;letter-spacing:.16em;font-size:14px;box-shadow:0 0 42px rgba(198,164,63,.20);overflow:hidden;}
+.loader-card::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.24),transparent);transform:translateX(-110%);animation:slShine 1.1s linear infinite;}
+@keyframes slShine{to{transform:translateX(110%)}}
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,22px);max-width:min(92vw,560px);padding:12px 18px;border-radius:999px;background:rgba(26,44,96,.94);border:1px solid rgba(198,164,63,.55);color:#F5F0E6;box-shadow:0 12px 34px rgba(0,0,0,.28);z-index:60;opacity:0;pointer-events:none;transition:opacity .24s ease,transform .24s ease;text-align:center;font-size:14px;backdrop-filter:blur(8px);}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.scroll-progress{position:fixed;left:0;top:0;height:3px;width:0;background:linear-gradient(90deg,#C6A43F,#F5F0E6,#C6A43F);z-index:70;box-shadow:0 0 16px rgba(198,164,63,.66);transition:width .08s linear;}
+.cursor-aura{position:fixed;left:0;top:0;width:38vmax;height:38vmax;transform:translate(calc(var(--mx,50vw) - 19vmax),calc(var(--my,50vh) - 19vmax));background:radial-gradient(circle,rgba(198,164,63,.16),rgba(26,44,96,.04) 34%,transparent 64%);pointer-events:none;z-index:1;mix-blend-mode:screen;transition:transform .08s linear;}
+.page-veil{position:fixed;inset:0;z-index:45;display:grid;place-items:center;background:#1A2C60;clip-path:circle(0% at var(--mx,50%) var(--my,50%));transition:clip-path .46s cubic-bezier(.22,1,.36,1);pointer-events:none;}
+.page-veil.show{clip-path:circle(145% at var(--mx,50%) var(--my,50%));}
+.veil-mark{font-family:"SJhuazhaoxi","Source Han Serif CN",serif;color:#C6A43F;letter-spacing:.28em;font-size:clamp(18px,2.2vw,42px);opacity:.92;}
+.quick-dock{position:fixed;right:18px;top:50%;transform:translateY(-50%);z-index:30;display:grid;gap:10px;padding:10px;border:1px solid rgba(198,164,63,.30);border-radius:999px;background:rgba(26,44,96,.58);backdrop-filter:blur(10px);box-shadow:0 18px 46px rgba(0,0,0,.22);}
+.quick-dock button{width:40px;height:40px;border-radius:50%;border:1px solid rgba(198,164,63,.45);background:rgba(245,240,230,.08);color:#F5F0E6;cursor:pointer;font-size:12px;display:grid;place-items:center;transition:transform .2s ease,background .2s ease,color .2s ease,box-shadow .2s ease;}
+.quick-dock button:hover{transform:translateX(-4px) scale(1.08);box-shadow:0 0 22px rgba(198,164,63,.32);}
+.quick-dock button.active{background:#C6A43F;color:#1A2C60;}
+.utility-bar{position:fixed;left:18px;bottom:18px;z-index:30;display:flex;gap:8px;align-items:center;max-width:calc(100vw - 36px);}
+.utility-bar button{border:1px solid rgba(198,164,63,.45);background:rgba(26,44,96,.66);color:#F5F0E6;border-radius:999px;padding:9px 13px;cursor:pointer;backdrop-filter:blur(8px);font-size:12px;transition:.2s ease;}
+.utility-bar button:hover{background:rgba(198,164,63,.90);color:#1A2C60;transform:translateY(-2px);}
+.palette{position:fixed;inset:0;z-index:80;display:grid;place-items:start center;padding-top:12vh;background:rgba(10,16,36,.50);backdrop-filter:blur(7px);opacity:0;pointer-events:none;transition:opacity .2s ease;}
+.palette.show{opacity:1;pointer-events:auto;}
+.palette-panel{width:min(680px,calc(100vw - 32px));border:1px solid rgba(198,164,63,.45);border-radius:24px;background:rgba(26,44,96,.96);box-shadow:0 28px 70px rgba(0,0,0,.36);overflow:hidden;}
+.palette input{width:100%;height:62px;border:0;border-bottom:1px solid rgba(198,164,63,.22);outline:none;background:rgba(245,240,230,.08);color:#F5F0E6;padding:0 22px;font-size:18px;font-family:inherit;}
+.palette-list{display:grid;padding:10px;gap:8px;}
+.palette-item{display:grid;grid-template-columns:42px 1fr auto;gap:12px;align-items:center;border:1px solid transparent;border-radius:16px;padding:11px 12px;color:#F5F0E6;cursor:pointer;}
+.palette-item:hover,.palette-item.active{border-color:rgba(198,164,63,.45);background:rgba(198,164,63,.12);}
+.palette-key{font-size:12px;opacity:.62;}
+.palette-icon{width:34px;height:34px;border-radius:50%;background:rgba(198,164,63,.16);display:grid;place-items:center;color:#C6A43F;}
+.route-hint{position:fixed;right:18px;bottom:18px;z-index:28;color:rgba(245,240,230,.60);font-size:12px;letter-spacing:.04em;}
+@media(max-width:760px){.quick-dock{right:10px;gap:6px;padding:7px}.quick-dock button{width:34px;height:34px;font-size:11px}.utility-bar{display:none}.route-hint{display:none}}
+.ambient-canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:.72;}
+.magnet-ring{position:fixed;left:0;top:0;width:64px;height:64px;border:1px solid rgba(198,164,63,.42);border-radius:50%;pointer-events:none;z-index:29;opacity:0;transform:translate(-50%,-50%) scale(.72);transition:opacity .18s ease,transform .18s ease,background .18s ease;box-shadow:0 0 32px rgba(198,164,63,.20);}
+.magnet-ring.show{opacity:1;transform:translate(-50%,-50%) scale(1);}
+.quick-dock::before{content:"";position:absolute;inset:6px;border-radius:999px;background:linear-gradient(180deg,rgba(245,240,230,.08),rgba(198,164,63,.06));opacity:.75;pointer-events:none;}
+.quick-dock button{position:relative;isolation:isolate;}
+.quick-dock button::after{content:"";position:absolute;inset:-4px;border-radius:inherit;background:radial-gradient(circle,rgba(198,164,63,.35),transparent 62%);opacity:0;transform:scale(.7);transition:opacity .2s ease,transform .2s ease;z-index:-1;}
+.quick-dock button:hover::after,.quick-dock button.active::after{opacity:1;transform:scale(1);}
+.utility-bar button,.palette-item{position:relative;overflow:hidden;}
+.utility-bar button::before,.palette-item::before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent,rgba(255,255,255,.16),transparent);transform:translateX(-120%);transition:transform .45s ease;pointer-events:none;}
+.utility-bar button:hover::before,.palette-item:hover::before,.palette-item.active::before{transform:translateX(120%);}
+.palette-panel{transform:translateY(-12px) scale(.98);transition:transform .22s cubic-bezier(.22,1,.36,1);}
+.palette.show .palette-panel{transform:none;}
+.palette-empty{padding:18px 20px;color:rgba(245,240,230,.62);text-align:center;font-size:14px;}
+.toast.critical{border-color:rgba(245,240,230,.72);box-shadow:0 14px 42px rgba(198,164,63,.26);}
+@media (prefers-reduced-motion: reduce){
+*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important;}
+.cursor-aura,.ambient-canvas,.magnet-ring{display:none!important;}
+}
+</style></head><body><canvas class="ambient-canvas" id="ambientCanvas" aria-hidden="true"></canvas><div class="magnet-ring" id="magnetRing" aria-hidden="true"></div><div class="cursor-aura" aria-hidden="true"></div><div class="scroll-progress" id="scrollProgress"></div><div class="page-veil" id="pageVeil"><div class="veil-mark">STORYLINE</div></div><div class="route-loader" id="routeLoader"><div class="loader-card">StoryLine Loading...</div></div><iframe id="appFrame" title="StoryLine integrated website"></iframe><div class="toast" id="toast"></div><nav class="quick-dock" aria-label="页面快捷导航"><button data-page="home" title="首页 · 1">首</button><button data-page="team" title="线上组队 · 2">团</button><button data-page="blog" title="探索世界 · 3">探</button><button data-page="about" title="关于我们 · 4">介</button><button data-page="help" title="帮助 · 5">?</button></nav><div class="utility-bar"><button id="paletteBtn">⌘K 快速跳转</button><button id="diceBtn">D20 灵感骰</button><button id="themeBtn">沉浸模式</button></div><div class="route-hint">1-5 切页 · Ctrl/⌘K 搜索 · D 掷骰</div><div class="palette" id="palette" role="dialog" aria-modal="true"><div class="palette-panel"><input id="paletteSearch" placeholder="搜索页面或动作：首页 / 组队 / 博客 / 关于 / 帮助 / 掷骰..." autocomplete="off"><div class="palette-list" id="paletteList"></div></div></div><script>
+<script src="StoryLine-assets/page-chunks-01.js"></script>
+<script src="StoryLine-assets/page-chunks-02.js"></script>
+<script src="StoryLine-assets/page-chunks-03.js"></script>
+<script src="StoryLine-assets/page-chunks-04.js"></script>
+<script src="StoryLine-assets/page-chunks-05.js"></script>
+<script src="StoryLine-assets/page-chunks-06.js"></script>
+<script>
+const PAGE_CHUNKS = window.PAGE_CHUNKS || {};
+const PAGE_TITLES = {
+home:'StoryLine - 首页', team:'StoryLine - 线上组队', blog:'StoryLine - 探索世界', blogEmpty:'StoryLine - 发布故事', help:'StoryLine - 帮助中心', about:'StoryLine - 关于我们'
+};
+const ALIAS = {
+'index':'home','home':'home','首页':'home',
+'team':'team','group':'team','线上组队':'team','线上组队页':'team',
+'blog':'blog','world':'blog','explore':'blog','探索世界':'blog','故事':'blog',
+'blog-empty':'blogEmpty','empty':'blogEmpty','发布故事':'blogEmpty',
+'help':'help','faq':'help','帮助':'help','帮助中心':'help',
+'about':'about','about-us':'about','关于我们':'about','门店':'about','下载App':'about'
+};
+const ACTIONS = [
+{page:'home', icon:'首', title:'首页', desc:'回到 StoryLine 落地页', key:'1'},
+{page:'team', icon:'团', title:'线上组队', desc:'进入游戏大厅与桌面预览', key:'2'},
+{page:'blog', icon:'探', title:'探索世界', desc:'浏览玩家故事、攻略与 GM 心得', key:'3'},
+{page:'about', icon:'介', title:'关于我们', desc:'品牌故事、门店与 App 下载', key:'4'},
+{page:'help', icon:'?', title:'帮助中心', desc:'TRPG 入门与平台服务说明', key:'5'},
+{page:'blogEmpty', icon:'✎', title:'发布我的第一个故事', desc:'进入空状态发布入口', key:'E'},
+{action:'dice', icon:'20', title:'D20 灵感骰', desc:'随机投掷一次 D20 并显示结果', key:'D'}
+];
+const frame = document.getElementById('appFrame');
+const loader = document.getElementById('routeLoader');
+const toastEl = document.getElementById('toast');
+const progress = document.getElementById('scrollProgress');
+const veil = document.getElementById('pageVeil');
+const palette = document.getElementById('palette');
+const paletteSearch = document.getElementById('paletteSearch');
+const paletteList = document.getElementById('paletteList');
+let currentPage = 'home';
+let toastTimer = 0;
+let progressRaf = 0;
+let immersive = false;
+function decodeB64Utf8(b64){
+const bin = atob(b64);
+const bytes = new Uint8Array(bin.length);
+for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+return new TextDecoder('utf-8').decode(bytes);
+}
+function pageHtml(page){return decodeB64Utf8(PAGE_CHUNKS[page].join(''));}
+function normalizePage(raw){
+if(!raw) return null;
+raw = String(raw).replace(/^#/,'').replace(/\.html.*$/,'').replace(/^\//,'').trim();
+return ALIAS[raw] || null;
+}
+function showToast(msg, time=1800){
+clearTimeout(toastTimer);
+toastEl.textContent = msg;
+toastEl.classList.add('show');
+toastTimer = setTimeout(()=>toastEl.classList.remove('show'), time);
+}
+function setActiveShortcut(page){
+document.querySelectorAll('.quick-dock button').forEach(btn => btn.classList.toggle('active', btn.dataset.page === page));
+}
+function veilFlash(){
+veil.classList.add('show');
+setTimeout(()=>veil.classList.remove('show'), 420);
+}
+function navigate(page, push=true){
+page = normalizePage(page) || page;
+if(!PAGE_CHUNKS[page]) page = 'home';
+currentPage = page;
+document.title = PAGE_TITLES[page] || 'StoryLine';
+setActiveShortcut(page);
+veilFlash();
+loader.classList.add('show');
+frame.classList.add('is-loading');
+frame.srcdoc = pageHtml(page);
+if(push) history.pushState({page}, '', '#' + page.replace('blogEmpty','blog-empty'));
+progress.style.width = '0%';
+}
+function updateProgress(){
+cancelAnimationFrame(progressRaf);
+progressRaf = requestAnimationFrame(() => {
+try{
+const w = frame.contentWindow;
+const d = frame.contentDocument.documentElement;
+const scrollTop = w.scrollY || d.scrollTop || 0;
+const max = Math.max(1, d.scrollHeight - w.innerHeight);
+progress.style.width = Math.max(0, Math.min(100, scrollTop / max * 100)) + '%';
+}catch(e){}
+});
+}
+function routeFromAnchor(a){
+const text = (a.textContent || '').replace(/\s+/g,'').trim();
+const href = a.getAttribute('href') || '';
+const cleanHref = href.split('#')[0].split('?')[0].split('/').pop().replace('.html','');
+if(href === '#top') return 'top';
+if(cleanHref){ const p = normalizePage(cleanHref); if(p) return p; }
+if(text.includes('首页')) return 'home';
+if(text.includes('线上组队') || text.includes('线上游戏') || text.includes('创建') || text.includes('进入游戏') || text.includes('再次加入')) return 'team';
+if(text.includes('探索世界') || text.includes('故事世界') || text.includes('查看更多') || text.includes('发布新文章') || text.includes('发布我的第一个故事') || text.includes('开始创作')) return text.includes('发布') && currentPage==='blog' ? 'blogEmpty' : 'blog';
+if(text.includes('关于我们') || text.includes('线下门店') || text.includes('查找附近门店') || text.includes('下载App') || text.includes('门店合作')) return 'about';
+if(text.includes('帮助') || text.includes('常见问题') || text.includes('联系客服')) return 'help';
+return null;
+}
+function bindRoutes(doc){
+doc.querySelectorAll('a').forEach(a => {
+a.addEventListener('click', ev => {
+const target = routeFromAnchor(a);
+if(target === 'top'){ ev.preventDefault(); frame.contentWindow.scrollTo({top:0,behavior:'smooth'}); return; }
+if(target){ ev.preventDefault(); navigate(target); }
+});
+});
+doc.querySelectorAll('button').forEach(btn => {
+const t = (btn.textContent || '').trim();
+if(t.includes('联系客服')) btn.addEventListener('click',()=>showToast('客服入口已模拟打开，可继续接入真实客服链接。'));
+if(t.includes('是') || t.includes('否')) btn.addEventListener('click',()=>showToast('感谢你的反馈，已记录这篇帮助是否有用。'));
+});
+}
+function injectCommon(doc){
+const style = doc.createElement('style');
+style.textContent = `
+html{scroll-behavior:smooth;}
+body{overflow:auto!important;}
+::selection{background:rgba(198,164,63,.35);color:#1A2C60;}
+body::-webkit-scrollbar{width:10px;height:10px;}
+body::-webkit-scrollbar-thumb{background:rgba(198,164,63,.45);border-radius:999px;border:2px solid rgba(26,44,96,.35);}
+a,button,.btn,.pill,.tab-btn,.dot,.float-btn{cursor:pointer;}
+.route-active{color:#C6A43F!important;text-shadow:0 0 14px rgba(198,164,63,.36);}
+.sl-hidden-post{display:none!important;}
+.sl-reveal{opacity:0;transform:translateY(22px);transition:opacity .55s ease,transform .55s cubic-bezier(.22,1,.36,1);}
+.sl-reveal.in{opacity:1;transform:none;}
+.sl-tilt{transform-style:preserve-3d;transition:transform .22s ease, box-shadow .22s ease, filter .22s ease;}
+.sl-tilt:hover{filter:brightness(1.04);box-shadow:0 18px 46px rgba(0,0,0,.16);}
+.sl-ripple{position:relative;overflow:hidden;}
+.sl-ripple-dot{position:absolute;inline-size:10px;block-size:10px;border-radius:50%;background:rgba(255,255,255,.34);transform:translate(-50%,-50%) scale(0);animation:slRipple .62s ease-out forwards;pointer-events:none;}
+@keyframes slRipple{to{transform:translate(-50%,-50%) scale(28);opacity:0;}}
+.dice-number{transition:transform .18s ease,color .18s ease,text-shadow .18s ease;}
+.dice-number.rolling{transform:scale(1.35) rotate(-4deg);color:#C6A43F!important;text-shadow:0 0 18px rgba(198,164,63,.55);}
+.sl-pop{animation:slPop .36s cubic-bezier(.18,1.8,.36,1);}
+@keyframes slPop{50%{transform:scale(1.08)}}
+.sl-confetti{position:fixed;left:50%;top:50%;width:8px;height:8px;background:#C6A43F;border-radius:50%;pointer-events:none;z-index:9999;animation:slBurst .72s ease-out forwards;}
+@keyframes slBurst{to{transform:translate(var(--dx),var(--dy)) scale(.12);opacity:0;}}
+`;
+doc.head.appendChild(style);
+const navTexts = {home:'首页',team:'线上组队',blog:'探索世界',about:'关于我们',help:'帮助'};
+doc.querySelectorAll('a').forEach(a => {
+const t = (a.textContent||'').replace(/\s+/g,'');
+if(t.includes(navTexts[currentPage] || '')) a.classList.add('route-active');
+});
+doc.querySelectorAll('button,a,.btn,.nav-pil,.feature-button,.download-btn,.more-small,.publish').forEach(el=>el.classList.add('sl-ripple'));
+}
+function wireRipple(doc){
+doc.querySelectorAll('.sl-ripple').forEach(el=>{
+el.addEventListener('click',e=>{
+const r=el.getBoundingClientRect();
+const dot=doc.createElement('span');
+dot.className='sl-ripple-dot';
+dot.style.left=(e.clientX-r.left)+'px'; dot.style.top=(e.clientY-r.top)+'px';
+el.appendChild(dot); setTimeout(()=>dot.remove(),650);
+});
+});
+}
+function wireReveal(doc){
+const items=[...doc.querySelectorAll('section,.card,.post,.script-card,.feature-card,.room-card,.branch,.value-card,.about-section,.article,.help-card')].slice(0,120);
+items.forEach((el,i)=>{el.classList.add('sl-reveal'); el.style.transitionDelay=(i%8)*38+'ms';});
+const io=new frame.contentWindow.IntersectionObserver(entries=>{entries.forEach(en=>{if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}})},{threshold:.10});
+items.forEach(el=>io.observe(el));
+}
+function wireTilt(doc){
+const items=[...doc.querySelectorAll('.card,.post,.script-card,.feature-card,.room-card,.branch,.value-card,.blog-card,.join-card')].slice(0,80);
+items.forEach(el=>{
+el.classList.add('sl-tilt');
+el.addEventListener('mousemove',e=>{
+const r=el.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width-.5; const y=(e.clientY-r.top)/r.height-.5;
+el.style.transform=`perspective(900px) rotateX(${-y*3.2}deg) rotateY(${x*3.2}deg) translateY(-2px)`;
+});
+el.addEventListener('mouseleave',()=>{el.style.transform='';});
+});
+}
+function emitConfetti(doc, n=18){
+for(let i=0;i<n;i++){
+const c=doc.createElement('i'); c.className='sl-confetti';
+const a=Math.random()*Math.PI*2, d=60+Math.random()*120;
+c.style.setProperty('--dx', Math.cos(a)*d+'px');
+c.style.setProperty('--dy', Math.sin(a)*d+'px');
+c.style.left=(50+(Math.random()*8-4))+'%'; c.style.top=(44+(Math.random()*8-4))+'%';
+doc.body.appendChild(c); setTimeout(()=>c.remove(),760);
+}
+}
+function enhanceHome(doc){
+doc.querySelectorAll('.feature-button,.btn,.publish,.more-small').forEach(el=>{
+el.addEventListener('mouseenter',()=>el.style.filter='brightness(1.07) saturate(1.06)');
+el.addEventListener('mouseleave',()=>el.style.filter='');
+});
+}
+function enhanceTeam(doc){
+const tabs = [...doc.querySelectorAll('.tab-btn')];
+tabs.forEach(btn => btn.addEventListener('click', () => {
+tabs.forEach(b=>b.classList.remove('active'));
+btn.classList.add('active');
+showToast('已切换到「' + btn.textContent.trim() + '」频道');
+}));
+const input = doc.querySelector('input[placeholder*="输入消息"]');
+const send = input ? input.parentElement?.querySelector('button:last-child') : null;
+const spacer = doc.querySelector('.chat-spacer');
+function sendMsg(){
+const text = input.value.trim(); if(!text) return;
+const msg = doc.createElement('div'); msg.className = 'chat-item user-added sl-pop';
+msg.innerHTML = '<div style="width:32px;height:32px;border-radius:50%;background:#C6A43F;color:#1A2C60;display:grid;place-items:center;font-size:12px;">PL</div><div><div class="chat-head"><span>我</span><span class="small">刚刚</span></div><p></p></div>';
+msg.querySelector('p').textContent = text; spacer?.before(msg); input.value = '';
+showToast('消息已发送到当前频道');
+}
+if(input && send){ send.addEventListener('click', sendMsg); input.addEventListener('keydown', e=>{ if(e.key==='Enter') sendMsg(); }); }
+const diceBtn = [...doc.querySelectorAll('a,button')].find(el=>el.textContent.includes('投掷骰子'));
+if(diceBtn) diceBtn.addEventListener('click', ev=>{ ev.preventDefault(); rollDice(doc); });
+}
+function rollDice(doc=frame.contentDocument){
+if(currentPage!=='team'){ showToast('D20 掷出：' + (Math.floor(Math.random()*20)+1) + '。进入组队页可联动骰盘。'); return; }
+const diceBtn = [...doc.querySelectorAll('a,button')].find(el=>el.textContent.includes('投掷骰子'));
+const panel = diceBtn?.closest('.dice-panel') || diceBtn?.parentElement || doc.body;
+const num = panel.querySelector('.dice-number') || [...doc.querySelectorAll('*')].find(el=>el.textContent.trim()==='20');
+let ticks=0; const finalRoll=Math.floor(Math.random()*20)+1;
+const timer=setInterval(()=>{
+ticks++; if(num){num.textContent = ticks<10 ? Math.floor(Math.random()*20)+1 : finalRoll; num.classList.add('rolling');}
+if(ticks>=10){clearInterval(timer); if(num) setTimeout(()=>num.classList.remove('rolling'),360); emitConfetti(doc,24); showToast('D20 投掷结果：' + finalRoll);}
+},55);
+}
+function enhanceBlog(doc){
+const posts = [...doc.querySelectorAll('.post')];
+const tabs = [...doc.querySelectorAll('.blog-tabs a')];
+tabs.forEach(tab => tab.addEventListener('click', ev=>{
+ev.preventDefault(); tabs.forEach(t=>t.classList.remove('active')); tab.classList.add('active');
+const key = tab.textContent.trim();
+posts.forEach((post, i)=>{
+const text = post.textContent;
+const show = key==='全部' || text.includes(key) || (key==='攻略' && i%3===0) || (key==='跑团日记' && i%3===1) || (key==='角色扮演' && i%3===2) || (key==='GM心得' && text.includes('GM'));
+post.classList.toggle('sl-hidden-post', !show);
+});
+showToast('已筛选：' + key);
+}));
+const search = doc.querySelector('.search input, input[type="search"], input[placeholder*="搜索"]');
+if(search) search.addEventListener('input', () => {
+const kw = search.value.trim().toLowerCase();
+posts.forEach(post => post.classList.toggle('sl-hidden-post', kw && !post.textContent.toLowerCase().includes(kw)));
+});
+doc.querySelectorAll('.post').forEach(post=>post.addEventListener('dblclick',()=>showToast('已收藏这篇故事')));
+const more = [...doc.querySelectorAll('a,button')].find(el=>el.textContent.includes('加载更多'));
+if(more) more.addEventListener('click', ev=>{ev.preventDefault(); emitConfetti(doc,10); showToast('已经到底啦，暂无更多故事。');});
+}
+function enhanceHelp(doc){
+const search = doc.querySelector('.search input, input[placeholder*="搜索"]');
+const article = doc.querySelector('.article');
+if(search && article) search.addEventListener('input', () => {
+const kw = search.value.trim();
+article.style.boxShadow = kw ? '0 0 0 2px rgba(198,164,63,.35) inset,0 0 34px rgba(198,164,63,.18)' : '';
+});
+doc.querySelectorAll('.faq-line,.info-head,.menu-head').forEach(row=>{row.addEventListener('click',()=>showToast('已展开「' + row.textContent.trim().slice(0,18) + '」'));});
+}
+function enhanceAbout(doc){
+const dots = [...doc.querySelectorAll('.dot')];
+dots.forEach((dot,i)=>dot.addEventListener('click',()=>{dots.forEach(d=>d.classList.remove('active'));dot.classList.add('active');showToast('已切换门店展示图 ' + (i+1));}));
+doc.querySelectorAll('.branch .btn, .join-actions-v7 a, .download-btn').forEach(btn=>{
+btn.addEventListener('click',ev=>{ev.preventDefault(); showToast(btn.textContent.trim() + '：交互已触发，可继续绑定真实链接。');});
+});
+}
+function enhanceFrame(page){
+const doc = frame.contentDocument; const win = frame.contentWindow; if(!doc || !win) return;
+injectCommon(doc); bindRoutes(doc); wireRipple(doc); wireReveal(doc); wireTilt(doc); decorateFrameDepth(doc);
+if(page==='home') enhanceHome(doc);
+if(page==='team') enhanceTeam(doc);
+if(page==='blog' || page==='blogEmpty') enhanceBlog(doc);
+if(page==='help') enhanceHelp(doc);
+if(page==='about') enhanceAbout(doc);
+win.scrollTo({top:0,left:0,behavior:'instant'});
+win.addEventListener('scroll', updateProgress, {passive:true});
+updateProgress();
+}
+function renderPalette(filter=''){ paletteIndex = 0;
+const q=filter.trim().toLowerCase(); paletteList.innerHTML='';
+ACTIONS.filter(a => !q || (a.title+a.desc+a.key).toLowerCase().includes(q)).forEach((a,i)=>{
+const item=document.createElement('div'); item.className='palette-item'+(i===0?' active':''); item.tabIndex=0;
+item.innerHTML=`<div class="palette-icon">${a.icon}</div><div><strong>${a.title}</strong><br><span style="opacity:.68;font-size:13px">${a.desc}</span></div><span class="palette-key">${a.key}</span>`;
+item.addEventListener('click',()=>{ closePalette(); a.action==='dice'? rollDice(): navigate(a.page); });
+paletteList.appendChild(item);
+});
+if(!paletteList.children.length) paletteList.innerHTML='<div class="palette-empty">No matching action</div>';
+}
+function openPalette(){renderPalette(); palette.classList.add('show'); setTimeout(()=>paletteSearch.focus(),30);}
+function closePalette(){palette.classList.remove('show'); paletteSearch.value='';}
+paletteSearch.addEventListener('input',()=>renderPalette(paletteSearch.value));
+palette.addEventListener('click',e=>{if(e.target===palette) closePalette();});
+document.getElementById('paletteBtn').addEventListener('click',openPalette);
+document.getElementById('diceBtn').addEventListener('click',()=>rollDice());
+document.getElementById('themeBtn').addEventListener('click',()=>{immersive=!immersive;document.querySelector('.quick-dock').style.opacity=immersive?.18:1;document.querySelector('.route-hint').style.opacity=immersive?0:1;showToast(immersive?'已进入沉浸模式':'已退出沉浸模式');});
+document.addEventListener('mousemove',e=>{document.documentElement.style.setProperty('--mx',e.clientX+'px');document.documentElement.style.setProperty('--my',e.clientY+'px');});
+document.addEventListener('keydown',e=>{
+if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault(); openPalette(); return;}
+if(e.key==='Escape') closePalette();
+if(['1','2','3','4','5'].includes(e.key)) navigate(['home','team','blog','about','help'][Number(e.key)-1]);
+if(e.key.toLowerCase()==='d') rollDice();
+});
+frame.addEventListener('load', () => {
+enhanceFrame(currentPage);
+loader.classList.remove('show');
+frame.classList.remove('is-loading');
+});
+window.addEventListener('popstate', e => navigate(e.state?.page || normalizePage(location.hash) || 'home', false));
+document.querySelectorAll('.quick-dock button').forEach(btn => btn.addEventListener('click',()=>navigate(btn.dataset.page)));
+navigate(normalizePage(location.hash) || 'home', false);
+const ambientCanvas = document.getElementById('ambientCanvas');
+const magnetRing = document.getElementById('magnetRing');
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+let ambientCtx, ambientParticles = [], ambientRaf = 0, paletteIndex = 0;
+function resizeAmbient(){
+if(!ambientCanvas) return;
+const dpr = Math.min(window.devicePixelRatio || 1, 2);
+ambientCanvas.width = Math.floor(innerWidth * dpr);
+ambientCanvas.height = Math.floor(innerHeight * dpr);
+ambientCanvas.style.width = innerWidth + 'px';
+ambientCanvas.style.height = innerHeight + 'px';
+ambientCtx = ambientCanvas.getContext('2d');
+ambientCtx.setTransform(dpr,0,0,dpr,0,0);
+const count = Math.min(90, Math.max(34, Math.floor(innerWidth * innerHeight / 22000)));
+ambientParticles = Array.from({length:count},()=>({
+x:Math.random()*innerWidth,
+y:Math.random()*innerHeight,
+r:Math.random()*2.2+0.7,
+a:Math.random()*Math.PI*2,
+s:Math.random()*0.35+0.12,
+o:Math.random()*0.22+0.08
+}));
+}
+function drawAmbient(){
+if(!ambientCtx || reduceMotion.matches) return;
+ambientCtx.clearRect(0,0,innerWidth,innerHeight);
+ambientCtx.globalCompositeOperation = 'lighter';
+for(const p of ambientParticles){
+p.a += p.s * 0.012;
+p.x += Math.cos(p.a) * p.s;
+p.y += Math.sin(p.a * 0.8) * p.s;
+if(p.x < -20) p.x = innerWidth + 20;
+if(p.x > innerWidth + 20) p.x = -20;
+if(p.y < -20) p.y = innerHeight + 20;
+if(p.y > innerHeight + 20) p.y = -20;
+ambientCtx.beginPath();
+ambientCtx.arc(p.x,p.y,p.r,0,Math.PI*2);
+ambientCtx.fillStyle = `rgba(198,164,63,${p.o})`;
+ambientCtx.fill();
+}
+ambientRaf = requestAnimationFrame(drawAmbient);
+}
+function bootAmbient(){
+if(!ambientCanvas || reduceMotion.matches) return;
+cancelAnimationFrame(ambientRaf);
+resizeAmbient();
+drawAmbient();
+}
+function setPaletteActive(index){
+const items = [...paletteList.querySelectorAll('.palette-item')];
+if(!items.length) return;
+paletteIndex = (index + items.length) % items.length;
+items.forEach((item,i)=>item.classList.toggle('active', i === paletteIndex));
+items[paletteIndex].scrollIntoView({block:'nearest'});
+}
+function triggerActivePaletteItem(){
+const item = paletteList.querySelector('.palette-item.active');
+if(item) item.click();
+}
+function bindMagnet(){
+document.querySelectorAll('.quick-dock button,.utility-bar button').forEach(el=>{
+el.addEventListener('mousemove', e=>{
+const r = el.getBoundingClientRect();
+const x = e.clientX - r.left - r.width/2;
+const y = e.clientY - r.top - r.height/2;
+el.style.transform = `translate(${x*.12}px,${y*.12}px) scale(1.06)`;
+magnetRing.style.left = e.clientX + 'px';
+magnetRing.style.top = e.clientY + 'px';
+magnetRing.classList.add('show');
+});
+el.addEventListener('mouseleave', ()=>{
+el.style.transform = '';
+magnetRing.classList.remove('show');
+});
+});
+}
+function enhancePaletteKeyboard(){
+paletteSearch.addEventListener('keydown', e=>{
+if(e.key === 'ArrowDown'){ e.preventDefault(); setPaletteActive(paletteIndex + 1); }
+if(e.key === 'ArrowUp'){ e.preventDefault(); setPaletteActive(paletteIndex - 1); }
+if(e.key === 'Enter'){ e.preventDefault(); triggerActivePaletteItem(); }
+});
+}
+function decorateFrameDepth(doc){
+const style = doc.createElement('style');
+style.textContent = `
+.sl-depth-sweep{position:fixed;inset:0;pointer-events:none;z-index:9998;background:radial-gradient(circle at var(--slx,50%) var(--sly,50%),rgba(198,164,63,.14),transparent 28%);opacity:0;transition:opacity .2s ease;}
+body:hover .sl-depth-sweep{opacity:1;}
+.sl-focus-lift{transition:transform .18s ease,box-shadow .18s ease;}
+.sl-focus-lift:focus-visible{outline:2px solid #C6A43F;outline-offset:4px;transform:translateY(-2px);box-shadow:0 0 0 6px rgba(198,164,63,.18);}
+`;
+doc.head.appendChild(style);
+const sweep = doc.createElement('div');
+sweep.className = 'sl-depth-sweep';
+doc.body.appendChild(sweep);
+doc.addEventListener('mousemove', e=>{
+doc.documentElement.style.setProperty('--slx', e.clientX + 'px');
+doc.documentElement.style.setProperty('--sly', e.clientY + 'px');
+}, {passive:true});
+doc.querySelectorAll('a,button,input,textarea,[tabindex]').forEach(el=>el.classList.add('sl-focus-lift'));
+}
+bootAmbient();
+bindMagnet();
+enhancePaletteKeyboard();
+window.addEventListener('resize', resizeAmbient);
+reduceMotion.addEventListener?.('change', bootAmbient);
+</script></body></html>
